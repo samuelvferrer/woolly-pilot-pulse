@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   AlertTriangle,
+  GitBranch,
   School,
   Users,
   ChevronDown,
@@ -90,6 +91,19 @@ export function AppSidebar() {
                         {alertCount}
                       </span>
                     )}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/loop"
+                    className="hover:bg-sidebar-accent"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  >
+                    <GitBranch className="mr-2 h-4 w-4" />
+                    {!collapsed && <span>Análise do Loop</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
