@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/StatCard";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowDown, ArrowUp, ArrowRight, Clock, CalendarDays, Sun, Moon, TrendingUp, AlertTriangle, Users, BookOpen, MessageCircle, Minus } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowRight, Clock, CalendarDays, Sun, Moon, TrendingUp, AlertTriangle, Users, BookOpen, MessageCircle, Minus, Gamepad2, BarChart3, Crown, Trash2 } from "lucide-react";
 import {
   cohortData,
   usageHeatmapData,
@@ -18,10 +18,18 @@ import {
   shortConvInsights,
   proficiencyEvolution,
   alunoEvolucao,
+  gamificationComparison,
+  scatterXpConversas,
+  pearsonCorrelation,
+  weeklyGrowthData,
+  growthMetrics,
+  alunosPorOrganizacao,
+  premiumFreeComparison,
 } from "@/mocks/intelligenceData";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, Cell, LineChart, Line, Legend, PieChart, Pie,
+  ScatterChart, Scatter, ZAxis,
 } from "recharts";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -33,7 +41,10 @@ const SECTION_NAV = [
   { id: "ativacao", label: "Ativação" },
   { id: "materias", label: "Matérias" },
   { id: "curtas", label: "Conv. Curtas" },
+  { id: "gamificacao", label: "Gamificação" },
   { id: "proficiencia", label: "Proficiência" },
+  { id: "crescimento", label: "Crescimento" },
+  { id: "premium", label: "Premium" },
 ];
 
 export default function Inteligencia() {
@@ -76,7 +87,10 @@ export default function Inteligencia() {
       <section id="ativacao"><ActivationFunnel /></section>
       <section id="materias"><SubjectAnalysis /></section>
       <section id="curtas"><ShortConversations /></section>
+      <section id="gamificacao"><GamificationSection /></section>
       <section id="proficiencia"><ProficiencyEvolutionSection /></section>
+      <section id="crescimento"><GrowthSection /></section>
+      <section id="premium"><PremiumVsFreeSection /></section>
     </div>
   );
 }
@@ -605,6 +619,231 @@ function ProficiencyEvolutionSection() {
             </Table>
           </div>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── SECTION 6: Gamification ───
+
+const ESCOLARIDADE_COLORS: Record<string, string> = {
+  "6° ano": "#E8820C", "7° ano": "#F4A940", "8° ano": "#2E7D32",
+  "9° ano": "#1976D2", "1° EM": "#7B1FA2", "2° EM": "#C62828", "3° EM": "#00838F",
+};
+
+function GamificationSection() {
+  const r = useMemo(() => pearsonCorrelation(scatterXpConversas), []);
+  const corrLabel = r > 0.5 ? "Correlação forte — gamificação acompanha o uso"
+    : r >= 0.2 ? "Correlação moderada" : "Correlação fraca — gamificação não parece ser driver de engajamento";
+  const corrColor = r > 0.5 ? "#2E7D32" : r >= 0.2 ? "#F9A825" : "#C62828";
+
+  const parseNum = (v: number | string) => typeof v === "string" ? parseFloat(v) : v;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Gamificação funciona?</CardTitle>
+        <CardDescription>Correlação entre elementos de gamificação e retenção</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Métrica</TableHead>
+                <TableHead className="text-center">Com Gamificação</TableHead>
+                <TableHead className="text-center">Sem Gamificação</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {gamificationComparison.map((row) => {
+                const comVal = parseNum(row.comGamificacao);
+                const semVal = parseNum(row.semGamificacao);
+                const comWins = comVal > semVal;
+                return (
+                  <TableRow key={row.metrica}>
+                    <TableCell className="font-medium">{row.metrica}</TableCell>
+                    <TableCell className="text-center font-semibold" style={{ color: comWins ? "#2E7D32" : "hsl(var(--muted-foreground))" }}>
+                      {row.comGamificacao}
+                    </TableCell>
+                    <TableCell className="text-center font-semibold" style={{ color: !comWins ? "#2E7D32" : "hsl(var(--muted-foreground))" }}>
+                      {row.semGamificacao}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div>
+          <h4 className="text-sm font-semibold mb-3">XP Total vs Conversas por Aluno</h4>
+          <ResponsiveContainer width="100%" height={300}>
+            <ScatterChart margin={{ bottom: 20, left: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <XAxis dataKey="xpTotal" type="number" name="XP Total" tick={{ fontSize: 11 }}
+                label={{ value: "XP Total", position: "bottom", offset: 0, fontSize: 11 }} />
+              <YAxis dataKey="totalConversas" type="number" name="Conversas" tick={{ fontSize: 11 }}
+                label={{ value: "Conversas", angle: -90, position: "insideLeft", fontSize: 11 }} />
+              <ZAxis range={[40, 40]} />
+              <RechartsTooltip
+                formatter={(v: number, name: string) => [v, name === "xpTotal" ? "XP" : "Conversas"]}
+                labelFormatter={() => ""}
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const d = payload[0].payload;
+                  return (
+                    <div className="rounded-lg border bg-card p-2 text-xs shadow-md">
+                      <p className="font-semibold">{d.apelido}</p>
+                      <p>XP: {d.xpTotal} | Conversas: {d.totalConversas}</p>
+                      <p className="text-muted-foreground">{d.escolaridade}</p>
+                    </div>
+                  );
+                }}
+              />
+              {Object.keys(ESCOLARIDADE_COLORS).map((esc) => (
+                <Scatter
+                  key={esc}
+                  name={esc}
+                  data={scatterXpConversas.filter((d) => d.escolaridade === esc)}
+                  fill={ESCOLARIDADE_COLORS[esc]}
+                />
+              ))}
+              <Legend wrapperStyle={{ fontSize: 10 }} />
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="p-3 rounded-lg bg-muted text-sm">
+          Coeficiente de Pearson: <strong style={{ color: corrColor }}>{r.toFixed(2)}</strong> — {corrLabel}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── SECTION 8: Growth ───
+
+function GrowthSection() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Crescimento</CardTitle>
+        <CardDescription>Novos alunos, origem e conversão</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <h4 className="text-sm font-semibold mb-3">Novos alunos por semana</h4>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={weeklyGrowthData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="semana" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <RechartsTooltip />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="escola" name="Escola" stackId="a" fill="#E8820C" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="organico" name="Orgânico" stackId="a" fill="#666666" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold mb-1">Métricas de Crescimento</h4>
+            <div className="grid grid-cols-2 gap-3">
+              <StatCard title="Total alunos ativos" value={growthMetrics.totalAtivos} icon={Users} iconColor="hsl(var(--primary))" />
+              <StatCard title="Cadastrados no período" value={growthMetrics.cadastradosNoPeriodo} icon={TrendingUp} iconColor="#E8820C" />
+              <StatCard title="Taxa de ativação" value={`${growthMetrics.taxaAtivacao}%`}
+                icon={BarChart3} iconColor={growthMetrics.taxaAtivacao > 50 ? "#2E7D32" : "#F9A825"}
+                valueColor={growthMetrics.taxaAtivacao > 50 ? "#2E7D32" : "#F9A825"} />
+              <StatCard title="Organizações" value={alunosPorOrganizacao.length} icon={BookOpen} iconColor="hsl(var(--primary))" />
+            </div>
+
+            <div>
+              <h4 className="text-xs font-semibold mb-2 text-muted-foreground">Alunos por organização</h4>
+              <div className="space-y-1">
+                {alunosPorOrganizacao.map((o) => (
+                  <div key={o.organizacao} className="flex items-center justify-between text-sm px-2 py-1 rounded bg-muted/50">
+                    <span>{o.organizacao}</span>
+                    <span className="font-semibold">{o.alunos}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-lg bg-muted/50 border border-border flex items-start gap-3">
+          <Trash2 size={18} className="text-muted-foreground mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">Alunos deletados: <span className="font-bold text-foreground">{growthMetrics.alunosDeletados}</span></p>
+            <p className="text-xs text-muted-foreground mt-1">Motivos principais:</p>
+            <ul className="text-xs text-muted-foreground list-disc list-inside">
+              {growthMetrics.motivosExclusao.map((m) => <li key={m}>{m}</li>)}
+            </ul>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── SECTION 9: Premium vs Free ───
+
+function PremiumVsFreeSection() {
+  const parseNum = (v: number | string) => typeof v === "string" ? parseFloat(v) : v;
+
+  const allSmallDiff = premiumFreeComparison.every((row) => {
+    const p = parseNum(row.premium);
+    const f = parseNum(row.free);
+    const max = Math.max(p, f);
+    return max === 0 || Math.abs(p - f) / max < 0.1;
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Premium vs Free</CardTitle>
+        <CardDescription>O premium entrega mais valor?</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Métrica</TableHead>
+                <TableHead className="text-center"><span className="inline-flex items-center gap-1"><Crown size={14} className="text-amber-500" /> Premium</span></TableHead>
+                <TableHead className="text-center">Free</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {premiumFreeComparison.map((row) => {
+                const pVal = parseNum(row.premium);
+                const fVal = parseNum(row.free);
+                const premiumWins = pVal > fVal;
+                // For "Quantidade de alunos" more free is expected, don't color
+                const isCount = row.metrica === "Quantidade de alunos";
+                return (
+                  <TableRow key={row.metrica}>
+                    <TableCell className="font-medium">{row.metrica}</TableCell>
+                    <TableCell className="text-center font-semibold" style={{ color: !isCount && premiumWins ? "#2E7D32" : "hsl(var(--muted-foreground))" }}>
+                      {row.premium}
+                    </TableCell>
+                    <TableCell className="text-center font-semibold" style={{ color: !isCount && !premiumWins ? "#2E7D32" : "hsl(var(--muted-foreground))" }}>
+                      {row.free}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+
+        {allSmallDiff && (
+          <div className="p-3 rounded-lg text-sm font-medium" style={{ backgroundColor: "#FFFBEB", borderColor: "#FDE68A", color: "#92400E", border: "1px solid #FDE68A" }}>
+            ⚠️ Pouca diferenciação entre Premium e Free. Revisar proposta de valor premium.
+          </div>
+        )}
       </CardContent>
     </Card>
   );

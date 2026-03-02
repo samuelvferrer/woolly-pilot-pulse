@@ -247,3 +247,122 @@ function generateAlunoEvolucao(): AlunoEvolucao[] {
 }
 
 export const alunoEvolucao: AlunoEvolucao[] = generateAlunoEvolucao();
+
+// ─── SECTION 6: Gamification as Engagement Driver ───
+
+export interface GamificationComparison {
+  metrica: string;
+  comGamificacao: number | string;
+  semGamificacao: number | string;
+}
+
+export const gamificationComparison: GamificationComparison[] = [
+  { metrica: "Quantidade de alunos", comGamificacao: 218, semGamificacao: 298 },
+  { metrica: "Média de conversas/aluno", comGamificacao: 8.4, semGamificacao: 3.1 },
+  { metrica: "Duração média (min)", comGamificacao: 5.6, semGamificacao: 2.8 },
+  { metrica: "% com resumo", comGamificacao: "12%", semGamificacao: "3%" },
+  { metrica: "% com quiz", comGamificacao: "18%", semGamificacao: "5%" },
+  { metrica: "% com 5+ conversas (hábito)", comGamificacao: "42%", semGamificacao: "11%" },
+];
+
+export interface ScatterPoint {
+  apelido: string;
+  xpTotal: number;
+  totalConversas: number;
+  escolaridade: string;
+}
+
+function generateScatterData(): ScatterPoint[] {
+  const escolaridades = ["6° ano", "7° ano", "8° ano", "9° ano", "1° EM", "2° EM", "3° EM"];
+  const nomes = [
+    "Luna","Thor","Gaia","Bolt","Star","Wave","Pixel","Blaze","Echo","Nova",
+    "Iris","Rex","Sky","Jade","Atom","Coral","Dusk","Fern","Hawk","Lynx",
+    "Nyx","Ash","Ivy","Kit","Leo","Sage","Wren","Zara","Finn","Cleo",
+    "Beau","Lily","Max","Aria","Rio","Skye","Juno","Eden","Luca","Milo",
+  ];
+  return nomes.map((n) => {
+    const base = Math.random();
+    const xp = Math.round(base * 2000 + Math.random() * 500);
+    const conv = Math.round(base * 30 + Math.random() * 10 + 1);
+    return {
+      apelido: n,
+      xpTotal: xp,
+      totalConversas: conv,
+      escolaridade: escolaridades[Math.floor(Math.random() * escolaridades.length)],
+    };
+  });
+}
+
+export const scatterXpConversas: ScatterPoint[] = generateScatterData();
+
+// Pearson correlation
+export function pearsonCorrelation(data: ScatterPoint[]): number {
+  const n = data.length;
+  const sumX = data.reduce((s, d) => s + d.xpTotal, 0);
+  const sumY = data.reduce((s, d) => s + d.totalConversas, 0);
+  const sumXY = data.reduce((s, d) => s + d.xpTotal * d.totalConversas, 0);
+  const sumX2 = data.reduce((s, d) => s + d.xpTotal ** 2, 0);
+  const sumY2 = data.reduce((s, d) => s + d.totalConversas ** 2, 0);
+  const num = n * sumXY - sumX * sumY;
+  const den = Math.sqrt((n * sumX2 - sumX ** 2) * (n * sumY2 - sumY ** 2));
+  return den === 0 ? 0 : num / den;
+}
+
+// ─── SECTION 8: Growth ───
+
+export interface WeeklyGrowth {
+  semana: string;
+  escola: number;
+  organico: number;
+}
+
+export const weeklyGrowthData: WeeklyGrowth[] = [
+  { semana: "Sem 1", escola: 18, organico: 12 },
+  { semana: "Sem 2", escola: 22, organico: 8 },
+  { semana: "Sem 3", escola: 15, organico: 14 },
+  { semana: "Sem 4", escola: 28, organico: 10 },
+  { semana: "Sem 5", escola: 20, organico: 16 },
+  { semana: "Sem 6", escola: 35, organico: 11 },
+  { semana: "Sem 7", escola: 24, organico: 13 },
+  { semana: "Sem 8", escola: 30, organico: 9 },
+];
+
+export const growthMetrics = {
+  totalAtivos: 516,
+  cadastradosNoPeriodo: 192,
+  taxaAtivacao: 62.5,
+  alunosDeletados: 34,
+  motivosExclusao: ["Não usa mais", "Criou outra conta", "Problemas técnicos"],
+};
+
+export interface OrgAlunos {
+  organizacao: string;
+  alunos: number;
+}
+
+export const alunosPorOrganizacao: OrgAlunos[] = [
+  { organizacao: "Colégio Progresso", alunos: 128 },
+  { organizacao: "Escola Nova Era", alunos: 95 },
+  { organizacao: "Instituto Educar", alunos: 72 },
+  { organizacao: "Colégio Futuro", alunos: 55 },
+  { organizacao: "Escola Criativa", alunos: 38 },
+];
+
+// ─── SECTION 9: Premium vs Free ───
+
+export interface PremiumFreeComparison {
+  metrica: string;
+  premium: number | string;
+  free: number | string;
+}
+
+export const premiumFreeComparison: PremiumFreeComparison[] = [
+  { metrica: "Quantidade de alunos", premium: 89, free: 427 },
+  { metrica: "Média de conversas/aluno", premium: 9.2, free: 4.8 },
+  { metrica: "Duração média (min)", premium: 6.1, free: 3.4 },
+  { metrica: "% conversas > 3 min", premium: "48%", free: "26%" },
+  { metrica: "% que fez resumo", premium: "15%", free: "4%" },
+  { metrica: "% que fez quiz", premium: "22%", free: "7%" },
+  { metrica: "% prof. Avançado/Master", premium: "38%", free: "22%" },
+  { metrica: "Média dias streak", premium: 4.2, free: 1.8 },
+];
