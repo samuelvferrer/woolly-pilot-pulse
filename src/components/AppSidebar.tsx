@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   AlertTriangle,
   GitBranch,
+  BrainCircuit,
   School,
   Users,
   ChevronDown,
@@ -104,6 +105,19 @@ export function AppSidebar() {
                   >
                     <GitBranch className="mr-2 h-4 w-4" />
                     {!collapsed && <span>Análise do Loop</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/inteligencia"
+                    className="hover:bg-sidebar-accent"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  >
+                    <BrainCircuit className="mr-2 h-4 w-4" />
+                    {!collapsed && <span>Inteligência</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>

@@ -10,6 +10,7 @@ import Turma from "./pages/Turma";
 import Aluno from "./pages/Aluno";
 import Alertas from "./pages/Alertas";
 import AnaliseLoop from "./pages/AnaliseLoop";
+import Inteligencia from "./pages/Inteligencia";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/aluno/:alunoId" element={<Aluno />} />
             <Route path="/alertas" element={<Alertas />} />
             <Route path="/loop" element={<AnaliseLoop />} />
+            <Route path="/inteligencia" element={<Inteligencia />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
