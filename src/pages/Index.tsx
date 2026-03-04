@@ -291,6 +291,19 @@ export default function VisaoGeral() {
     return Object.values(map).sort((a, b) => a.qes_medio - b.qes_medio);
   }, [isFiltered, escolas, filteredTurmas]);
 
+  // Activity chart data
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const chartData = activityData.map((d) => ({
+    label: formatDayLabel(d.data, d.data === todayStr),
+    sessoes: d.sessoes,
+    loops: d.loops,
+    isToday: d.data === todayStr,
+  }));
+
+  const todayData = activityData.find((d) => d.data === todayStr);
+  const todaySessoes = todayData?.sessoes || 0;
+  const todayLoops = todayData?.loops || 0;
+
   if (error) {
     return (
       <ErrorState
