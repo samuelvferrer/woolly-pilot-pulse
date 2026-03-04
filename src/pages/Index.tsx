@@ -202,18 +202,6 @@ export default function VisaoGeral() {
   const loading = loadingEscolas || loadingAlertas || loadingTurmas;
   const error = errorEscolas || errorAlertas;
 
-  if (error) {
-    return (
-      <ErrorState
-        message={error}
-        onRetry={() => {
-          refetchEscolas();
-          refetchAlertas();
-        }}
-      />
-    );
-  }
-
   // Derive available séries from turmas
   const availableSeries = useMemo(() => {
     if (!turmas) return [];
@@ -269,30 +257,15 @@ export default function VisaoGeral() {
   const alertCount = filteredAlertas.length;
   const alertAlto = filteredAlertas.filter((a) => a.severidade === "alto").length;
 
-  // Activity chart data
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const chartData = activityData.map((d) => ({
-    label: formatDayLabel(d.data, d.data === todayStr),
-    sessoes: d.sessoes,
-    loops: d.loops,
-    isToday: d.data === todayStr,
-  }));
-
-  const todayData = activityData.find((d) => d.data === todayStr);
-  const todaySessoes = todayData?.sessoes || 0;
-  const todayLoops = todayData?.loops || 0;
-
   // Schools: when filtered, build from turmas grouped by escola
   const sortedEscolas = useMemo(() => {
     if (!isFiltered) {
       return escolas ? [...escolas].sort((a, b) => a.qes_medio - b.qes_medio) : [];
     }
-    // Group filtered turmas by escola
     const map: Record<string, DashboardEscola> = {};
     filteredTurmas.forEach((t) => {
       const key = t.escola_nome;
       if (!map[key]) {
-        // Find original escola for id
         const orig = escolas?.find((e) => e.escola_nome === key);
         map[key] = {
           escola_id: orig?.escola_id || key,
@@ -309,18 +282,26 @@ export default function VisaoGeral() {
       }
       map[key].total_alunos += t.total_alunos || 0;
     });
-    // Recalculate weighted averages
     Object.values(map).forEach((e) => {
       const relevantTurmas = filteredTurmas.filter((t) => t.escola_nome === e.escola_nome);
       if (e.total_alunos > 0) {
         e.qes_medio = relevantTurmas.reduce((s, t) => s + (t.qes_medio || 0) * (t.total_alunos || 0), 0) / e.total_alunos;
       }
-      e.taxa_loop_media = relevantTurmas.length > 0
-        ? relevantTurmas.reduce((s, t) => s + (((t as any).taxa_loop_media) || 0), 0) / relevantTurmas.length
-        : 0;
     });
     return Object.values(map).sort((a, b) => a.qes_medio - b.qes_medio);
   }, [isFiltered, escolas, filteredTurmas]);
+
+  if (error) {
+    return (
+      <ErrorState
+        message={error}
+        onRetry={() => {
+          refetchEscolas();
+          refetchAlertas();
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
