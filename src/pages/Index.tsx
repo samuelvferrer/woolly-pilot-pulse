@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Users, TrendingUp, AlertTriangle, RefreshCw } from "lucide-react";
+import { Users, TrendingUp, AlertTriangle, RefreshCw, Filter } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
-import type { DashboardEscola, DashboardAlerta } from "@/types/dashboard";
+import type { DashboardEscola, DashboardAlerta, DashboardTurma } from "@/types/dashboard";
 import { StatCard } from "@/components/StatCard";
 import { QesBadge } from "@/components/QesBadge";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
@@ -15,6 +15,13 @@ import { ActivityChart } from "@/components/dashboard/ActivityChart";
 import { TodayCard } from "@/components/dashboard/TodayCard";
 import { CohortRetention } from "@/components/dashboard/CohortRetention";
 import { CriticalAlerts } from "@/components/dashboard/CriticalAlerts";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface DailyActivity {
   data: string;
@@ -30,6 +37,7 @@ function formatDayLabel(dateStr: string, isToday: boolean): string {
 
 export default function VisaoGeral() {
   const navigate = useNavigate();
+  const [selectedSerie, setSelectedSerie] = useState<string>("todas");
 
   // Existing queries
   const {
@@ -45,6 +53,11 @@ export default function VisaoGeral() {
     error: errorAlertas,
     refetch: refetchAlertas,
   } = useSupabaseQuery<DashboardAlerta>("v_dashboard_alertas");
+
+  const {
+    data: turmas,
+    loading: loadingTurmas,
+  } = useSupabaseQuery<DashboardTurma>("v_dashboard_turma");
 
   // Activity data (last 14 days)
   const [activityData, setActivityData] = useState<DailyActivity[]>([]);
@@ -186,38 +199,97 @@ export default function VisaoGeral() {
     fetchCohort();
   }, []);
 
-  const loading = loadingEscolas || loadingAlertas;
+  const loading = loadingEscolas || loadingAlertas || loadingTurmas;
   const error = errorEscolas || errorAlertas;
 
-  if (error) {
-    return (
-      <ErrorState
-        message={error}
-        onRetry={() => {
-          refetchEscolas();
-          refetchAlertas();
-        }}
-      />
-    );
-  }
+  // Derive available séries from turmas
+  const availableSeries = useMemo(() => {
+    if (!turmas) return [];
+    const set = new Set(turmas.map((t) => t.serie));
+    return Array.from(set).sort();
+  }, [turmas]);
 
-  // Aggregates
-  const totalAlunos = escolas?.reduce((s, e) => s + e.total_alunos, 0) || 0;
-  const totalEscolas = escolas?.length || 0;
+  // Filter turmas by selected série
+  const filteredTurmas = useMemo(() => {
+    if (!turmas) return [];
+    if (selectedSerie === "todas") return turmas;
+    return turmas.filter((t) => t.serie === selectedSerie);
+  }, [turmas, selectedSerie]);
 
-  const qesMedio =
-    escolas && escolas.length > 0 && totalAlunos > 0
+  // When filtering by série, aggregate from turmas instead of escolas
+  const isFiltered = selectedSerie !== "todas";
+
+  const totalAlunos = isFiltered
+    ? filteredTurmas.reduce((s, t) => s + (t.total_alunos || 0), 0)
+    : escolas?.reduce((s, e) => s + e.total_alunos, 0) || 0;
+
+  const filteredEscolaNames = useMemo(() => {
+    if (!isFiltered) return new Set(escolas?.map((e) => e.escola_nome) || []);
+    return new Set(filteredTurmas.map((t) => t.escola_nome));
+  }, [isFiltered, escolas, filteredTurmas]);
+
+  const totalEscolas = filteredEscolaNames.size;
+
+  const qesMedio = isFiltered
+    ? filteredTurmas.length > 0 && totalAlunos > 0
+      ? filteredTurmas.reduce((s, t) => s + (t.qes_medio || 0) * (t.total_alunos || 0), 0) / totalAlunos
+      : 0
+    : escolas && escolas.length > 0 && totalAlunos > 0
       ? escolas.reduce((s, e) => s + e.qes_medio * e.total_alunos, 0) / totalAlunos
       : 0;
 
-  const taxaLoopMedia =
-    escolas && escolas.length > 0
+  const taxaLoopMedia = isFiltered
+    ? filteredTurmas.length > 0
+      ? filteredTurmas.reduce((s, t) => s + (((t as any).taxa_loop_media) || 0), 0) / filteredTurmas.length
+      : 0
+    : escolas && escolas.length > 0
       ? escolas.reduce((s, e) => s + e.taxa_loop_media, 0) / escolas.length
       : 0;
 
-  const alertCount = alertas?.length || 0;
-  const alertAlto =
-    alertas?.filter((a) => a.severidade === "alto").length || 0;
+  // Filter alertas by turma_nome when série is selected
+  const filteredAlertas = useMemo(() => {
+    if (!alertas) return [];
+    if (!isFiltered) return alertas;
+    const turmaNames = new Set(filteredTurmas.map((t) => t.turma_nome));
+    return alertas.filter((a) => turmaNames.has(a.turma_nome));
+  }, [alertas, isFiltered, filteredTurmas]);
+
+  const alertCount = filteredAlertas.length;
+  const alertAlto = filteredAlertas.filter((a) => a.severidade === "alto").length;
+
+  // Schools: when filtered, build from turmas grouped by escola
+  const sortedEscolas = useMemo(() => {
+    if (!isFiltered) {
+      return escolas ? [...escolas].sort((a, b) => a.qes_medio - b.qes_medio) : [];
+    }
+    const map: Record<string, DashboardEscola> = {};
+    filteredTurmas.forEach((t) => {
+      const key = t.escola_nome;
+      if (!map[key]) {
+        const orig = escolas?.find((e) => e.escola_nome === key);
+        map[key] = {
+          escola_id: orig?.escola_id || key,
+          escola_nome: key,
+          total_alunos: 0,
+          qes_medio: 0,
+          alunos_criticos: 0,
+          alunos_superficiais: 0,
+          alunos_recorrentes: 0,
+          alunos_engajados: 0,
+          alunos_profundos: 0,
+          taxa_loop_media: 0,
+        };
+      }
+      map[key].total_alunos += t.total_alunos || 0;
+    });
+    Object.values(map).forEach((e) => {
+      const relevantTurmas = filteredTurmas.filter((t) => t.escola_nome === e.escola_nome);
+      if (e.total_alunos > 0) {
+        e.qes_medio = relevantTurmas.reduce((s, t) => s + (t.qes_medio || 0) * (t.total_alunos || 0), 0) / e.total_alunos;
+      }
+    });
+    return Object.values(map).sort((a, b) => a.qes_medio - b.qes_medio);
+  }, [isFiltered, escolas, filteredTurmas]);
 
   // Activity chart data
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -232,15 +304,47 @@ export default function VisaoGeral() {
   const todaySessoes = todayData?.sessoes || 0;
   const todayLoops = todayData?.loops || 0;
 
-  // Schools sorted by QES ascending
-  const sortedEscolas = escolas
-    ? [...escolas].sort((a, b) => a.qes_medio - b.qes_medio)
-    : [];
+  if (error) {
+    return (
+      <ErrorState
+        message={error}
+        onRetry={() => {
+          refetchEscolas();
+          refetchAlertas();
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <LiveHeader />
+
+      {/* Filter bar */}
+      <div className="flex items-center gap-3">
+        <Filter className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm font-medium text-muted-foreground">Filtrar por série:</span>
+        <Select value={selectedSerie} onValueChange={setSelectedSerie}>
+          <SelectTrigger className="w-[180px] h-9 text-sm">
+            <SelectValue placeholder="Todas as séries" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todas">Todas as séries</SelectItem>
+            {availableSeries.map((s) => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {isFiltered && (
+          <button
+            onClick={() => setSelectedSerie("todas")}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+          >
+            Limpar filtro
+          </button>
+        )}
+      </div>
 
       {/* Linha 1 — KPI Cards */}
       {loading ? (
@@ -400,8 +504,8 @@ export default function VisaoGeral() {
       {/* Linha 4 — Critical Alerts */}
       {loading ? (
         <LoadingSkeleton variant="table" count={3} />
-      ) : alertas && alertas.length > 0 ? (
-        <CriticalAlerts alertas={alertas} />
+      ) : filteredAlertas.length > 0 ? (
+        <CriticalAlerts alertas={filteredAlertas} />
       ) : (
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <EmptyState
