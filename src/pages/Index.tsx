@@ -37,6 +37,7 @@ function formatDayLabel(dateStr: string, isToday: boolean): string {
 
 export default function VisaoGeral() {
   const navigate = useNavigate();
+  const [selectedSerie, setSelectedSerie] = useState<string>("todas");
 
   // Existing queries
   const {
@@ -52,6 +53,11 @@ export default function VisaoGeral() {
     error: errorAlertas,
     refetch: refetchAlertas,
   } = useSupabaseQuery<DashboardAlerta>("v_dashboard_alertas");
+
+  const {
+    data: turmas,
+    loading: loadingTurmas,
+  } = useSupabaseQuery<DashboardTurma>("v_dashboard_turma");
 
   // Activity data (last 14 days)
   const [activityData, setActivityData] = useState<DailyActivity[]>([]);
