@@ -504,8 +504,8 @@ export default function VisaoGeral() {
       {/* Linha 4 — Critical Alerts */}
       {loading ? (
         <LoadingSkeleton variant="table" count={3} />
-      ) : alertas && alertas.length > 0 ? (
-        <CriticalAlerts alertas={alertas} />
+      ) : filteredAlertas.length > 0 ? (
+        <CriticalAlerts alertas={filteredAlertas} />
       ) : (
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <EmptyState
