@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Users, TrendingUp, AlertTriangle, RefreshCw } from "lucide-react";
+import { Users, TrendingUp, AlertTriangle, RefreshCw, Filter } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
-import type { DashboardEscola, DashboardAlerta } from "@/types/dashboard";
+import type { DashboardEscola, DashboardAlerta, DashboardTurma } from "@/types/dashboard";
 import { StatCard } from "@/components/StatCard";
 import { QesBadge } from "@/components/QesBadge";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
@@ -15,6 +15,13 @@ import { ActivityChart } from "@/components/dashboard/ActivityChart";
 import { TodayCard } from "@/components/dashboard/TodayCard";
 import { CohortRetention } from "@/components/dashboard/CohortRetention";
 import { CriticalAlerts } from "@/components/dashboard/CriticalAlerts";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface DailyActivity {
   data: string;
